@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jellyfish Smack — pulse-jet sea nettles</title>
+<meta name="description" content="A smack of bioluminescent sea nettles: impulse physics, 3-D translucent bells and lagged tentacle chains, drawn point by point.">
+<style>
+  :root{--bg:#05080f;--panel:#0b1220;--line:#18263c;--ink:#c9d8ef;--dim:#6c819e;--acc:#5ce0c8;--acc3:#7fc8ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 90% at 50% 0%,#0a1425 0%,#05080f 60%);color:var(--ink);
+       font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;padding:18px}
+  h1{font-size:17px;margin:0 0 2px;letter-spacing:.4px;font-weight:650}
+  h1 span{color:var(--acc)}
+  .sub{color:var(--dim);font-size:12px;margin-bottom:14px}
+  .wrap{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;justify-content:center}
+  .stage{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+         box-shadow:0 18px 50px rgba(0,0,0,.6),inset 0 0 60px rgba(20,60,110,.12);background:#04070e}
+  canvas{display:block;width:min(90vw,820px);height:auto}
+  .hud{position:absolute;left:10px;bottom:8px;font:11px ui-monospace,Menlo,monospace;color:#5d7ba1}
+  .panel{width:300px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .grp{margin-bottom:12px}
+  label{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin-bottom:4px}
+  label b{color:var(--ink);font-weight:600;font-family:ui-monospace,Menlo,monospace}
+  input[type=range]{width:100%;accent-color:var(--acc);height:18px}
+  .row{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+  button{flex:1;min-width:62px;background:#111c2e;color:var(--ink);border:1px solid var(--line);
+         border-radius:9px;padding:7px 9px;font-size:12px;cursor:pointer;transition:.15s}
+  button:hover{border-color:#2c4a72;background:#16233a}
+  button.on{background:#122a26;border-color:var(--acc);color:#d2fff4}
+  button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{font-size:11px;padding:5px 9px;border-radius:20px;border:1px solid var(--line);background:#0e1729;
+        color:var(--dim);cursor:pointer;user-select:none;transition:.15s}
+  .chip.on{color:#04070e;font-weight:700}
+  .sw{display:flex;align-items:center;gap:6px;font-size:11px;padding:5px 10px 5px 6px;border-radius:20px;
+      border:1px solid var(--line);background:#0e1729;color:var(--dim);cursor:pointer;user-select:none;transition:.15s}
+  .sw:hover{border-color:#2c4a72}
+  .sw.on{background:#16233a;color:var(--ink);border-color:#3a5a8a}
+  .dot{width:22px;height:11px;border-radius:6px;flex:none}
+  .hint{font-size:11px;color:var(--dim);border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+</style>
+</head>
+<body>
+
+<h1>A smack of <span id="ttl">sea nettles</span> — impulse physics, lagged tentacles</h1>
+<div class="sub">One species, grown large: translucent 3-D bells with pigment stripes, scalloped lappets and a traveling contraction wave; fourteen flowing tentacles and four long ruffled oral arms — Catmull-Rom-smoothed jointed chains that inherit the body's past heading. Each jelly glows in its own colour, flashing on the swim stroke, and sinks gently between pulses.</div>
+
+<div class="wrap">
+  <div class="stage">
+    <canvas id="cv" width="960" height="960"></canvas>
+    <div class="hud" id="hud"></div>
+  </div>
+
+  <div class="panel">
+    <div class="grp">
+      <label>water &amp; light</label>
+      <div class="chips" id="pals"></div>
+    </div>
+
+    <div class="grp"><label>jellies <b id="vS">5</b></label><input id="S" type="range" min="1" max="12" value="5" step="1"></div>
+    <div class="grp"><label>points / frame <b id="vN">64k</b></label><input id="N" type="range" min="12000" max="140000" value="64000" step="2000"></div>
+    <div class="grp"><label>pulse power <b id="vP">1.00</b></label><input id="P" type="range" min="0" max="200" value="100" step="1"></div>
+    <div class="grp"><label>water drag <b id="vD">1.00</b></label><input id="D" type="range" min="30" max="220" value="100" step="1"></div>
+    <div class="grp"><label>tentacle lag <b id="vL">1.00</b></label><input id="L" type="range" min="0" max="250" value="100" step="1"></div>
+    <div class="grp"><label>tentacle reach <b id="vT">1.00</b></label><input id="T" type="range" min="0" max="220" value="100" step="1"></div>
+    <div class="grp"><label>flexibility <b id="vX">1.00</b></label><input id="X" type="range" min="0" max="220" value="100" step="1"></div>
+    <div class="grp"><label>drift together <b id="vC">0.25</b></label><input id="C" type="range" min="0" max="150" value="25" step="1"></div>
+    <div class="grp"><label>trail persistence <b id="vF">0.70</b></label><input id="F" type="range" min="0" max="95" value="70" step="1"></div>
+
+    <div class="grp"><label>anatomy layers</label><div class="chips" id="chips"></div></div>
+
+    <div class="row">
+      <button id="play" class="on">pause</button>
+      <button id="dart">startle!</button>
+      <button id="slow">slo-mo</button>
+    </div>
+    <div class="row">
+      <button id="vec">show vectors</button>
+      <button id="plank" class="on">plankton</button>
+    </div>
+    <div class="hint">Click the water to startle them.</div>
+  </div>
+</div>
+
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d',{alpha:false});
+const hud=document.getElementById('hud');
+const W=cv.width,H=cv.height,Q=W/640,img=ctx.createImageData(W,H),d=img.data;
+const PI=Math.PI,TAU=PI*2,sin=Math.sin,cos=Math.cos,atan2=Math.atan2,pow=Math.pow,
+      abs=Math.abs,min=Math.min,max=Math.max,hyp=Math.hypot,flr=Math.floor;
+const fract=x=>x-flr(x);
+const wrapA=a=>{while(a>PI)a-=TAU;while(a<-PI)a+=TAU;return a};
+const mix=(h,k)=>[h[0]+(255-h[0])*k,h[1]+(255-h[1])*k,h[2]+(255-h[2])*k];
+const dark=(h,f)=>[h[0]*f,h[1]*f,h[2]*f];
+
+// ======================= WATER & LIGHT SCHEMES =======================
+// seven per-jelly hues (cycled by index) + a vertical water gradient behind the smack.
+const SCHEMES={
+  lagoon:{ label:'lagoon', tint:'#7fe9ff',
+    hues:[[127,233,255],[186,156,255],[190,220,255],[150,255,214],[255,163,216],[200,235,255],[255,214,140]],
+    bgTop:[8,17,38], bgBot:[2,4,11], plank:[150,205,255] },
+  abyss:{ label:'abyss', tint:'#8f7bff',
+    hues:[[120,110,255],[80,200,255],[180,150,255],[60,140,255],[150,120,255],[130,220,255],[210,180,255]],
+    bgTop:[10,8,30], bgBot:[3,2,10], plank:[160,170,255] },
+  coral:{ label:'coral', tint:'#ff6a8a',
+    hues:[[255,140,170],[255,180,120],[255,220,235],[255,120,190],[255,200,140],[255,235,225],[255,230,160]],
+    bgTop:[24,8,20], bgBot:[8,2,8], plank:[255,190,210] },
+  ember:{ label:'ember', tint:'#ff9436',
+    hues:[[255,150,60],[255,90,40],[255,220,170],[255,170,80],[230,70,50],[255,240,200],[255,210,110]],
+    bgTop:[26,10,4], bgBot:[8,3,2], plank:[255,200,150] },
+  ghost:{ label:'ghost', tint:'#cfe2ff',
+    hues:[[200,220,250],[170,195,235],[235,245,255],[190,215,245],[150,180,220],[240,248,255],[220,235,255]],
+    bgTop:[10,13,20], bgBot:[4,5,9], plank:[205,225,255] }
+};
+let SCH_=SCHEMES.lagoon;
+const bgR=new Float32Array(H), bgG=new Float32Array(H), bgB=new Float32Array(H);
+function buildBg(){
+  for(let y=0;y<H;y++){ const f=y/(H-1);
+    bgR[y]=SCH_.bgTop[0]+(SCH_.bgBot[0]-SCH_.bgTop[0])*f;
+    bgG[y]=SCH_.bgTop[1]+(SCH_.bgBot[1]-SCH_.bgTop[1])*f;
+    bgB[y]=SCH_.bgTop[2]+(SCH_.bgBot[2]-SCH_.bgTop[2])*f; }
+}
+function paintBgSolid(){ let k=0;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++,k+=4){d[k]=bgR[y];d[k+1]=bgG[y];d[k+2]=bgB[y];d[k+3]=255;} }
+buildBg(); paintBgSolid();
+
+let t=0,playing=true,slomo=false,showVec=false,plankton=true;
+const P={S:5,N:64000,P:1,D:1,L:1,T:1,X:1,C:.25,F:.70};
+const LAYERS={bell:1,canals:1,manubrium:1,tentacles:1,arms:1};
+
+function plot(x,y,r,g,b,a){
+  x=x|0;y=y|0; if(x<0||y<0||x>=W||y>=H)return;
+  const k=(y*W+x)<<2; let v;
+  v=d[k]+r*a;   d[k]  =v>255?255:v;
+  v=d[k+1]+g*a; d[k+1]=v>255?255:v;
+  v=d[k+2]+b*a; d[k+2]=v>255?255:v;
+}
+function fade(f){ let k=0;
+  for(let y=0;y<H;y++){ const br=bgR[y],bg2=bgG[y],bb=bgB[y];
+    for(let x=0;x<W;x++,k+=4){
+      d[k]=br+(d[k]-br)*f; d[k+1]=bg2+(d[k+1]-bg2)*f; d[k+2]=bb+(d[k+2]-bb)*f; } } }
+// smooth radial halo, painted straight into the pixel buffer (the v1 gradient glow)
+function glowBlob(cx,cy,rad,hue,amp){
+  const x0=max(0,(cx-rad)|0), x1=min(W-1,(cx+rad)|0);
+  const y0=max(0,(cy-rad)|0), y1=min(H-1,(cy+rad)|0);
+  const r2=rad*rad, hr=hue[0]*amp, hg=hue[1]*amp, hb=hue[2]*amp;
+  for(let y=y0;y<=y1;y++){
+    const dy=y-cy, dy2=dy*dy;
+    let k=(y*W+x0)<<2;
+    for(let x=x0;x<=x1;x++,k+=4){
+      const dx=x-cx, q=1-(dx*dx+dy2)/r2;
+      if(q>0){ const f=q*q; let v;
+        v=d[k]+hr*f;   d[k]  =v>255?255:v;
+        v=d[k+1]+hg*f; d[k+1]=v>255?255:v;
+        v=d[k+2]+hb*f; d[k+2]=v>255?255:v; }
+    }
+  }
+}
+
+// ============================ SPECIES ============================
+// one species: a large sea-nettle. wM/h0/h1: bell width & height profile ·
+// AM: rim curl · stf: pigment stripes · tl/al: tentacle & arm length · thM: thickness
+const TYPES={
+  nettle:{ wM:.92, h0:.58, h1:.32, AM:2.05, stf:1, tl:1.5, al:1.5, thM:1.1 }
+};
+const BSZ=[62,38,74,30,52,44,82];   // a real size spread: small drifters to big matriarchs
+
+// ============================ AGENTS ============================
+const HN=96, DT=1/60, CT=.34;
+function fillOf(ph){ ph=fract(ph);
+  if(ph<1-CT){ const p=ph/(1-CT); return .5-.5*cos(PI*p); }
+  const u=(ph-(1-CT))/CT; return .5+.5*cos(PI*u); }
+
+let sq=[];
+function recolor(s){
+  const hue=SCH_.hues[s.g%7];
+  s.C={ hue,
+    bellB:mix(hue,.45), speck:mix(hue,.75), stripe:dark(hue,.55),
+    canal:mix(hue,.50), gonad:mix(hue,.62), bead:mix(hue,.68),
+    tenB:mix(hue,.35), armB:mix(hue,.50), ruffle:mix(hue,.65) };
+}
+function build(n){
+  const old=sq; sq=[];
+  for(let g=0;g<n;g++){
+    if(old[g]){sq.push(old[g]);continue;}
+    const h=x=>((sin(x*127.1+g*311.7)*43758.5453)%1+1)%1;
+    const a0=h(3)*TAU;
+    const sz=BSZ[g%7]*(0.85+.30*h(6))*Q;
+    const s={g,type:'nettle',x:100*Q+h(1)*(W-200*Q),y:100*Q+h(2)*(H-200*Q),vx:0,vy:0,ang:a0,angC:a0,av:0,
+      ph:h(4),per:1.5+h(5)*.7+sz*.017/Q,             // small ones pulse quicker, big ones slower
+      sz,w1:h(7)*TAU,w2:.55+h(8),
+      fin:h(9)*TAU,fill:0,thr:0,sp:0,startle:0,
+      hx:new Float32Array(HN),hy:new Float32Array(HN),ha:new Float32Array(HN),hi:0,warm:0};
+    recolor(s); sq.push(s);
+  }
+}
+build(P.S);
+
+function step(dt){
+  const POW=470*Q*P.P, LIN=1.55*P.D, QUAD=.006/Q*P.D, SCH=P.C;
+  for(const s of sq){
+    const per = s.startle>0 ? s.per*.45 : s.per;
+    s.ph+=dt/per; if(s.ph>=1)s.ph-=1;
+    s.fill=fillOf(s.ph);
+    if(s.ph<1-CT){ s.thr=0; }
+    else { const u=(s.ph-(1-CT))/CT; s.thr=pow(sin(PI*u),.6)*(s.startle>0?2.6:1); }
+    if(s.startle>0)s.startle-=dt;
+
+    let dx=cos(t*.10*s.w2+s.w1), dy=sin(t*.08*s.w2+s.w1*1.7)-.25;       // slow, graceful wander
+    const M=170*Q,K=4.5;
+    if(s.x<M)dx+=K*(M-s.x)/M; if(s.x>W-M)dx-=K*(s.x-(W-M))/M;
+    if(s.y<M)dy+=K*(M-s.y)/M; if(s.y>H-M)dy-=K*(s.y-(H-M))/M;
+    let ax=0,ay=0,n=0;
+    for(const o of sq){ if(o===s)continue;
+      const ox=o.x-s.x, oy=o.y-s.y, dd=hyp(ox,oy);
+      if(dd<200*Q&&dd>.001){ ax+=cos(o.ang); ay+=sin(o.ang); n++;
+        if(dd<100*Q){ dx-=ox/dd*1.2; dy-=oy/dd*1.2; } } }
+    if(n){ dx+=ax/n*SCH; dy+=ay/n*SCH; }
+
+    const heavy=s.sz>60?.7:1;                                            // the biggest turn slowest
+    const da=wrapA(atan2(dy,dx)-s.ang);
+    s.av+=da*2.6*heavy*dt; s.av*=.93; s.av=max(-1.0,min(1.0,s.av));
+    s.angC+=s.av*dt; s.ang=s.angC;
+
+    s.vx+=cos(s.ang)*POW*s.thr*dt; s.vy+=sin(s.ang)*POW*s.thr*dt;
+    s.vy+=9*Q*dt*(1-min(1,s.thr*2));                                     // gentle sink between pulses
+    const sp=hyp(s.vx,s.vy), dr=1-(LIN+QUAD*sp)*dt;
+    s.vx*=dr; s.vy*=dr;
+    if(s.x<20&&s.vx<0)s.vx*=-.35; if(s.x>W-20&&s.vx>0)s.vx*=-.35;
+    if(s.y<20&&s.vy<0)s.vy*=-.35; if(s.y>H-20&&s.vy>0)s.vy*=-.35;
+    s.x+=s.vx*dt; s.y+=s.vy*dt; s.sp=sp;
+    s.fin+=dt*(1.5+4*min(1,sp/(140*Q)));
+
+    if(!s.warm){ for(let i=0;i<HN;i++){s.hx[i]=s.x;s.hy[i]=s.y;s.ha[i]=s.angC;} s.warm=1; }
+    s.hx[s.hi]=s.x; s.hy[s.hi]=s.y; s.ha[s.hi]=s.angC; s.hi=(s.hi+1)%HN;
+  }
+}
+function past(s,f,o){
+  f=max(0,min(HN-2,f));
+  const i0=flr(f), fr=f-i0;
+  const a=(s.hi-1-i0+HN*2)%HN, b=(s.hi-1-i0-1+HN*2)%HN;
+  o[0]=s.hx[a]+(s.hx[b]-s.hx[a])*fr;
+  o[1]=s.hy[a]+(s.hy[b]-s.hy[a])*fr;
+  o[2]=s.ha[a]+(s.ha[b]-s.ha[a])*fr;
+}
+
+// ---- tentacles & oral arms: jointed chains, only the ANGLE comes from the past ----
+const pb=new Float64Array(3);
+const NSA=12, NST=16, NTEN=14;
+const tnX=new Float64Array(NTEN*(NSA+1)), tnY=new Float64Array(NTEN*(NSA+1)), tnA=new Float64Array(NTEN*(NSA+1));
+const arX=new Float64Array(4*(NST+1)),  arY=new Float64Array(4*(NST+1)),  arA=new Float64Array(4*(NST+1));
+const tenDepth=new Float64Array(NTEN);
+function chain(s,bx,by,a0,segLen,nseg,lagTot,wAmp,wFreq,wPh,curl,OX,OY,OA,off){
+  OX[off]=bx; OY[off]=by;
+  for(let j=0;j<nseg;j++){
+    const f=j/nseg;
+    past(s,f*lagTot,pb);
+    const ang=pb[2]+PI+a0*(1-.18*f)+wAmp*sin(wFreq*f-wPh)+curl*f*f;
+    OA[off+j]=ang;
+    OX[off+j+1]=OX[off+j]+cos(ang)*segLen;
+    OY[off+j+1]=OY[off+j]+sin(ang)*segLen;
+  }
+  OA[off+nseg]=OA[off+nseg-1];
+}
+// Catmull-Rom sample: out[0]=value, out[1]=derivative
+const c1=new Float64Array(2), c2=new Float64Array(2);
+function crv(AR,o,nseg,fp,out){
+  const j=min(nseg-1,flr(fp)), tt=fp-j;
+  const p0=AR[o+max(0,j-1)], p1=AR[o+j], p2=AR[o+j+1], p3=AR[o+min(nseg,j+2)];
+  const A=2*p0-5*p1+4*p2-p3, B=3*(p1-p2)+p3-p0;
+  out[0]=p1+.5*tt*((p2-p0)+tt*(A+tt*B));
+  out[1]=.5*((p2-p0)+tt*(2*A+3*tt*B));
+}
+// ============================ RENDER ============================
+const KZ=.38;   // vertical squash of the azimuth ellipse (view tilt)
+function frame(){
+  fade(P.F);
+  if(plankton){ const pk=SCH_.plank;
+    for(let i=0;i<520;i++){
+      const a=fract(i*.618034),b=fract(i*.754878);
+      plot(fract(a+t*.004*(.4+b))*W, fract(b-t*.0016)*H, pk[0],pk[1],pk[2], .10+.10*sin(i+t*2));
+    } }
+
+  const S=sq.length, per=max(1,(P.N/S)|0);
+  for(let g=0;g<S;g++){
+    const s=sq[g], sz=s.sz, TY=TYPES[s.type], jc=s.C, hue=jc.hue;
+    const fill0=s.fill;
+    const spN=min(1,s.sp/(140*Q)), turn=max(-1,min(1,s.av/1.4));
+    const rot=s.angC+PI/2, cr=cos(rot), sr=sin(rot);
+    const tenLag=22*P.L, armLag=12*P.L, flex=P.X;
+
+    // bioluminescent halo around the bell, flashing on the swim stroke
+    if(LAYERS.bell)
+      glowBlob(s.x+.25*sz*sr, s.y-.25*sz*cr, 2.4*sz, hue, .055+.11*s.thr);
+
+    // tentacle bases ring the bell margin (an ellipse in view); each carries a depth
+    for(let k=0;k<NTEN;k++){
+      const hh=fract(sin((k+1)*12.9898+g*78.233)*43758.5453);
+      const psk=(k+.5)/NTEN*TAU, dk=sin(psk);
+      tenDepth[k]=dk;
+      const ab=2.02, fA=fillOf(s.ph-.07*ab);
+      const r3=sz*sin(ab)*.95*TY.wM*(.80+.45*fA);
+      const bxl=r3*cos(psk);
+      const byl=-sz*cos(ab)*(TY.h0+TY.h1*(1-fA))+r3*KZ*dk;
+      const bx=s.x+bxl*cr-byl*sr, by=s.y+bxl*sr+byl*cr;
+      const TL=sz*(1.35+.75*hh)*TY.tl*P.T*(1+.28*(1-fill0))*(.92+.12*dk);
+      const a0k=cos(psk)*.55*(.5+.5*fill0), crl=(hh-.5)*2.4*flex;
+      chain(s,bx,by,a0k,TL/NSA,NSA,tenLag,
+            (.12+.28*spN)*flex,3.2,s.fin*1.5-k*1.7,crl,tnX,tnY,tnA,k*(NSA+1));
+    }
+    for(let j=0;j<4;j++){
+      const bxl=sz*.16*(j-1.5), byl=sz*.06;
+      const bx=s.x+bxl*cr-byl*sr, by=s.y+bxl*sr+byl*cr;
+      const AL=sz*1.35*TY.al*(.7+.3*P.T);
+      chain(s,bx,by,(j-1.5)*.30,AL/NST,NST,armLag,
+            (.10+.22*spN)*flex,2.3,s.fin*1.2-j*1.5,(j-1.5)*.18*flex,arX,arY,arA,j*(NST+1));
+    }
+
+    if(showVec){
+      for(let i=0;i<26;i++) plot(s.x+s.vx*i*.006, s.y+s.vy*i*.006, 90,255,160,.6);
+      for(let i=0;i<18;i++) plot(s.x+cos(s.angC)*i*3, s.y+sin(s.angC)*i*3, 255,220,80,.35);
+    }
+
+    const perJ=max(1,(per*(.45+.55*sz/(58*Q)))|0);    // point budget scales with body size
+    for(let n=0;n<perJ;n++){
+      const ii=n;
+      const u=fract((ii+1)*.6180339887+g*.3719),
+            v=fract((ii+1)*.7548776662+g*.7317),
+            w=fract((ii+1)*.5698402910+g*.1531);
+      const bucket=ii%1000;
+      let X,Y,R,G,B,A;
+
+      if(bucket<450){                                   // ---------- BELL (3-D surface) ----------
+        if(!LAYERS.bell)continue;
+        const a=TY.AM*pow(u,.72);                       // denser toward the rim
+        const psi=v*TAU, cp=cos(psi), sp2=sin(psi);
+        const fA=fillOf(s.ph-.07*a);                    // contraction wave, apex -> rim
+        const wB=(.80+.45*fA)*TY.wM, hg=TY.h0+TY.h1*(1-fA);
+        const lap=1+.05*pow(a/TY.AM,3)*sin(8*psi+s.fin*.7)+.02*sin(9*a+s.fin*2+g);
+        const r3=sz*.95*sin(a)*wB*lap;
+        const xl=r3*cp+.10*turn*flex*sz*(1-cos(a));
+        const yl=-sz*cos(a)*hg+r3*KZ*sp2;               // tilted view: azimuth becomes an ellipse
+        X=s.x+xl*cr-yl*sr; Y=s.y+xl*sr+yl*cr;
+        const rr=a/TY.AM, front=.7+.3*sp2;
+        if(fract(u*137.5+w*61.83)<.10){R=jc.speck[0];G=jc.speck[1];B=jc.speck[2];A=.32*front;}
+        else{
+          R=hue[0]+(jc.bellB[0]-hue[0])*rr; G=hue[1]+(jc.bellB[1]-hue[1])*rr; B=hue[2]+(jc.bellB[2]-hue[2])*rr;
+          const stF=(a<1.9?1:max(0,1-(a-1.9)/.25))*TY.stf;
+          const st=pow(max(0,sin(7*psi+g)),18)*stF;     // pigment stripe meridians
+          R+=(jc.stripe[0]-R)*st; G+=(jc.stripe[1]-G)*st; B+=(jc.stripe[2]-B)*st;
+          const nl=.8*cos(a)-.6*sin(a)*cp;              // light from upper-left
+          const hi=pow(max(0,nl),7);
+          R+=(255-R)*hi*.7; G+=(255-G)*hi*.7; B+=(255-B)*hi*.7;
+          const edge=pow(abs(cp),3);                    // limb brightening: glassy silhouette
+          A=(.055+.13*edge)*front+.11*st+.16*hi;
+        }
+
+      }else if(bucket<520){                             // ---------- RADIAL CANALS ----------
+        if(!LAYERS.canals)continue;
+        const c=ii%12, psc=(c+.5)/12*TAU;
+        const a=u*1.95, fA=fillOf(s.ph-.07*a);
+        const r3=sz*.95*sin(a)*(.80+.45*fA)*TY.wM*.90;
+        const xl=r3*cos(psc)+(w-.5)*.02*sz;
+        const yl=-sz*cos(a)*(TY.h0+TY.h1*(1-fA))*.90+r3*KZ*sin(psc)+(v-.5)*.02*sz;
+        X=s.x+xl*cr-yl*sr; Y=s.y+xl*sr+yl*cr;
+        R=jc.canal[0];G=jc.canal[1];B=jc.canal[2];
+        A=.15*(.4+.6*u)*(.65+.35*sin(psc));
+
+      }else if(bucket<560){                             // ---------- FRILLY MANUBRIUM ----------
+        if(!LAYERS.manubrium)continue;                  // the ruffled mouth under the bell
+        const xl=(v-.5)*.26*sz*(1-.3*u)+.04*sz*sin(8*u-s.fin*1.6);
+        const yl=-.05*sz+u*.50*sz;
+        X=s.x+xl*cr-yl*sr; Y=s.y+xl*sr+yl*cr;
+        A=.16*(1-.4*u);
+        R=jc.gonad[0];G=jc.gonad[1];B=jc.gonad[2];
+
+      }else if(bucket<830){                             // ---------- 14 TENTACLES ----------
+        if(!LAYERS.tentacles)continue;
+        const k=ii%NTEN, r=u, o=k*(NSA+1), dk=tenDepth[k];
+        crv(tnX,o,NSA,r*NSA,c1); crv(tnY,o,NSA,r*NSA,c2);
+        const tx=c1[1], ty=c2[1], tl=hyp(tx,ty)||1;
+        const nx=-ty/tl, ny=tx/tl;
+        const sv=2*v-1, soft=1-sv*sv;                   // round cross-section falloff
+        const th=.030*sz*TY.thM*pow(1-r,.65)*(.85+.20*dk);
+        X=c1[0]+nx*sv*th; Y=c2[0]+ny*sv*th;
+        if(fract(r*18+k*.37)<.14&&r>.05){R=jc.bead[0];G=jc.bead[1];B=jc.bead[2];A=.42*soft;}
+        else{ R=hue[0]+(jc.tenB[0]-hue[0])*r; G=hue[1]+(jc.tenB[1]-hue[1])*r; B=hue[2]+(jc.tenB[2]-hue[2])*r;
+              A=.26*(1-.30*r)*soft*(.72+.28*dk); }
+
+      }else{                                            // ---------- 4 ORAL ARMS ----------
+        if(!LAYERS.arms)continue;
+        const j=ii%4, r=u, o=j*(NST+1);
+        crv(arX,o,NST,r*NST,c1); crv(arY,o,NST,r*NST,c2);
+        const tx=c1[1], ty=c2[1], tl=hyp(tx,ty)||1;
+        const nx=-ty/tl, ny=tx/tl;
+        const sv=2*v-1, ed=abs(sv);
+        const th=(.035+.085*pow(sin(11*r-s.fin*2.2+j*2.3),2))*(1-.20*r)*sz;
+        X=c1[0]+nx*sv*th; Y=c2[0]+ny*sv*th;
+        if(ed>.6){R=jc.ruffle[0];G=jc.ruffle[1];B=jc.ruffle[2];A=.30*pow(1-(ed-.6)/.4,.5);}
+        else{ R=hue[0]+(jc.armB[0]-hue[0])*r; G=hue[1]+(jc.armB[1]-hue[1])*r; B=hue[2]+(jc.armB[2]-hue[2])*r;
+              A=.20*(1-.35*r)*(1-.6*ed*ed); }
+      }
+      plot(X,Y,R,G,B,A);
+    }
+  }
+  ctx.putImageData(img,0,0);
+}
+
+let last=performance.now(),fps=60;
+function loop(now){
+  if(playing){ const dt=slomo?DT*.28:DT; t+=dt; step(dt); frame(); }
+  const el=now-last; last=now; fps+=(1000/el-fps)*.1;
+  const avg=sq.reduce((a,s)=>a+s.sp,0)/max(1,sq.length);
+  hud.textContent=`${(P.N/1000)|0}k pts/frame  ·  mean speed ${avg.toFixed(0)} px/s  ·  ${fps.toFixed(0)} fps`;
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ============================ UI ============================
+const bind=(id,key,fmt,scale=1,after)=>{
+  const el=document.getElementById(id),lab=document.getElementById('v'+id);
+  const upd=()=>{P[key]=(+el.value)*scale;lab.textContent=fmt(P[key]);if(after)after();};
+  el.addEventListener('input',upd);upd();
+};
+bind('S','S',x=>x,1,()=>build(P.S));
+bind('N','N',x=>((x/1000)|0)+'k');
+bind('P','P',x=>x.toFixed(2),.01);
+bind('D','D',x=>x.toFixed(2),.01);
+bind('L','L',x=>x.toFixed(2),.01);
+bind('T','T',x=>x.toFixed(2),.01);
+bind('X','X',x=>x.toFixed(2),.01);
+bind('C','C',x=>x.toFixed(2),.01);
+bind('F','F',x=>x.toFixed(2),.01);
+
+const rgb=a=>`rgb(${a[0]|0},${a[1]|0},${a[2]|0})`;
+const chipEls={};
+const chips=document.getElementById('chips');
+Object.keys(LAYERS).forEach(k=>{
+  const b=document.createElement('div');
+  b.className='chip on'; b.textContent=k;
+  b.onclick=()=>{LAYERS[k]=LAYERS[k]?0:1;b.classList.toggle('on',!!LAYERS[k]);paintChips();if(!playing)frame();};
+  chips.appendChild(b); chipEls[k]=b;
+});
+// UI theme is fixed and independent of the water scheme
+const LCOL={bell:'#3ff0c0',canals:'#7fc8ff',manubrium:'#ffd9a0',tentacles:'#5ce09a',arms:'#2fb9a8'};
+function paintChips(){
+  Object.keys(LAYERS).forEach(k=>{
+    const b=chipEls[k], c=LCOL[k];
+    b.style.background=LAYERS[k]?c:'#0e1729';
+    b.style.borderColor=LAYERS[k]?c:'#18263c';
+    b.style.color=LAYERS[k]?'#04070e':'#6c819e';
+  });
+}
+paintChips();
+
+const pals=document.getElementById('pals'), palEls={};
+Object.keys(SCHEMES).forEach(name=>{
+  const p=SCHEMES[name];
+  const el=document.createElement('div');
+  el.className='sw'; el.innerHTML=`<span class="dot"></span>${p.label}`;
+  el.querySelector('.dot').style.background=
+    `linear-gradient(90deg,${rgb(p.hues[0])},${rgb(p.hues[1])},${rgb(p.hues[6])})`;
+  el.onclick=()=>setPal(name);
+  pals.appendChild(el); palEls[name]=el;
+});
+function setPal(name){
+  SCH_=SCHEMES[name]; buildBg();
+  for(const s of sq) recolor(s);
+  Object.keys(palEls).forEach(k=>palEls[k].classList.toggle('on',k===name));
+  if(!playing)frame();
+}
+setPal('lagoon');
+
+const playBtn=document.getElementById('play'),dartBtn=document.getElementById('dart'),
+      slowBtn=document.getElementById('slow'),vecBtn=document.getElementById('vec'),plBtn=document.getElementById('plank');
+playBtn.onclick=()=>{playing=!playing;playBtn.textContent=playing?'pause':'play';playBtn.classList.toggle('on',playing)};
+dartBtn.onclick=()=>{for(const s of sq){s.startle=1.6;s.ph=1-CT+.02;}};
+slowBtn.onclick=()=>{slomo=!slomo;slowBtn.classList.toggle('on',slomo)};
+vecBtn.onclick =()=>{showVec=!showVec;vecBtn.classList.toggle('on',showVec);if(!playing)frame()};
+plBtn.onclick  =()=>{plankton=!plankton;plBtn.classList.toggle('on',plankton)};
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect(), mx=(e.clientX-r.left)/r.width*W, my=(e.clientY-r.top)/r.height*H;
+  for(const s of sq){ const dd=hyp(s.x-mx,s.y-my);
+    if(dd<260*Q){ s.startle=1.6; s.ph=1-CT+.02; s.angC=atan2(s.y-my,s.x-mx); s.av=0; } }
+});
+try{ if(matchMedia('(prefers-reduced-motion: reduce)').matches){
+  playing=false; playBtn.textContent='play'; playBtn.classList.remove('on'); step(DT); frame();
+}}catch(e){}
+</script>
+
+</body>
+</html>
