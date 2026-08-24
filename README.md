@@ -5,7 +5,7 @@ No sprites, no meshes, no physics library — just a pixel buffer and some math.
 
 **[▶ Live demo](https://susuxbt.github.io/jellyfish/)**
 
-![demo](demo.mp4)
+![demo](demo.gif)
 
 ## What's going on
 
