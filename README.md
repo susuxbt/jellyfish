@@ -3,7 +3,7 @@
 A smack of bioluminescent sea nettles, drawn point by point on a 2-D canvas.
 No sprites, no meshes, no physics library — just a pixel buffer and some math.
 
-**[▶ Live demo](https://YOUR-USERNAME.github.io/jellyfish/)**
+**[▶ Live demo](https://susuxbt.github.io/jellyfish/)**
 
 ![demo](demo.gif)
 
